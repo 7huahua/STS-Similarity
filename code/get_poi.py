@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import requests
 import json
+import os
 
 class GetPoi(object):
     def __init__(self,src = None):
@@ -13,7 +14,7 @@ class GetPoi(object):
         df = pd.read_csv(src,parse_dates = ['arr_t','lea_t'])
         if not df.shape[0]:
             raise ValueError
-        return df[13040:]
+        return df
      
     def load_params(self,location,radius,query):
         params = {
@@ -99,11 +100,33 @@ class GetPoi(object):
         print(f'index: {index}, row: {row}')
         print('运行完成')
 
+    
+    def get_poi_df(self):
+        # 从./data中读取所有以poi开头的csv文件，并仅仅保留poi1和poi2两列有值的数据
+        # 首先，读取所有的csv文件
+        all_df = pd.DataFrame()
+        for file in os.listdir('./data'):
+            if file.startswith('poi'):
+                df = pd.read_csv('./data/' + file)
+                # 然后，仅仅保留poi1或者poi2两列有值的数据
+                df = df[(df['poi1'].notnull()) | (df['poi2'].notnull())]
+                all_df = pd.concat([all_df, df])
+        
+        # 最后，将poi1和poi2两列合并为一个列
+        all_df['poi'] = all_df['poi1'] + all_df['poi2']
+        # 删除poi1和poi2两列
+        all_df.drop(['poi1', 'poi2'], axis=1, inplace=True)
+        return all_df
 
     
 
 if __name__ == '__main__':
     src = 'data/stay_regions.csv'
     poi_obj = GetPoi(src)
-    poi_obj.get_poi()
-    # poi_df.to_csv('data/poi.csv',index = False)
+    staypoints = poi_obj.staypoints
+    print(staypoints.shape)
+    df = poi_obj.get_poi_df()
+    print(df.shape)
+    # 保存到csv文件
+    df.to_csv('data/poi.csv',index = False)
+    
