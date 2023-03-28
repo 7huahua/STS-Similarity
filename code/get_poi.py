@@ -13,7 +13,7 @@ class GetPoi(object):
         df = pd.read_csv(src,parse_dates = ['arr_t','lea_t'])
         if not df.shape[0]:
             raise ValueError
-        return df[11104:]
+        return df[13040:]
      
     def load_params(self,location,radius,query):
         params = {
