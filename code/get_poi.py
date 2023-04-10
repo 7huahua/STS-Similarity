@@ -14,7 +14,7 @@ class GetPoi(object):
         df = pd.read_csv(src,parse_dates = ['arr_t','lea_t'])
         if not df.shape[0]:
             raise ValueError
-        return df[3655:]
+        return df
      
     def load_params(self,location,radius,query):
         params = {
@@ -123,18 +123,42 @@ class GetPoi(object):
         # 再次检查all_df中是否有空值或者nan值
         all_df = all_df[all_df['poi'].notnull()]
         return all_df
+    
+    def get_poi3_df(self):
+        # # 首先导入poi_processed.csv文件
+        # poi1_poi2_processed = pd.read_csv('./data/poi_processed.csv')
+        
+        # 从./data中读取所有以poi3开头的csv文件
+        # 首先，读取所有的csv文件
+        all_df = pd.DataFrame()
+        for file in os.listdir('./data'):
+            if file.startswith('poi3_'):
+                df = pd.read_csv('./data/' + file)
+                # 然后，仅仅保留poi1或者poi2两列有值并且值不为nan的数据
+                df = df[(df['poi3'].notnull())]
+                all_df = pd.concat([all_df, df])
+        # 删除user,lat_min,lat_max,lng_min,lng_max,arr_t,lea_t,lat,lng重复的行
+        all_df.drop_duplicates(subset=['user','lat_min','lat_max','lng_min','lng_max','arr_t','lea_t','lat','lng'],inplace=True)
+        # 再次检查all_df中是否有空值或者nan值
+        all_df = all_df[all_df['poi3'].notnull()]
+        return all_df
 
     
 
 if __name__ == '__main__':
     src = 'data/stay_regions.csv'
     poi_obj = GetPoi(src)
-    # staypoints = poi_obj.staypoints
+    staypoints = poi_obj.staypoints
     # get poi for every stay point
-    poi_obj.get_poi()
-    # print(staypoints.shape)
+    # poi_obj.get_poi()
+    print(staypoints.shape)
     # df = poi_obj.get_poi_df()
     # print(df.shape)
     # # 保存到csv文件
     # df.to_csv('data/poi1_poi2.csv',index = False)
+
+    df = poi_obj.get_poi3_df()
+    print(df.shape)
+    # 保存到csv文件
+    df.to_csv('data/poi3.csv',index = False)
     
