@@ -1,1 +1,8 @@
 # STS-Similarity
+
+
+这是一个本人论文的项目。
+其中，ST_similarity用于计算ST-simlarity score，Semc_similarity用于计算smec-sim score
+st主要使用locaiton_features,利用stay point的时空聚类算出用户的tfidf向量作为相似度
+Semc先将stayregion数据计算出tfidf后进行聚类，从而获得语义轨迹，再使用prefixspan计算最大频繁模式序列
+通过计算用户两两之间的最大频繁模式序列的相似度作为用户的相似度
