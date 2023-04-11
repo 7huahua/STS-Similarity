@@ -9,7 +9,10 @@ from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import random
 import seaborn as sns
+import pickle
 from mpl_toolkits.mplot3d import Axes3D
+
+
 
 
 
@@ -27,6 +30,7 @@ class SemcSimilarity(object):
         return stayregions
 
     # get poi tfidf
+
     def get_poi_tfidf(self,stayregions,poi_label):
         # for each stay region, treat it as a phase, and the pois within it as words
         # get the tfidf of each phase
@@ -175,13 +179,92 @@ class SemcSimilarity(object):
         self.by_weekday_with_subset = self.by_weekday_with_subset(stayregions,label)
 
     # extract prefixspan
-    def extract_prefixspan(self,stayregions,label):
-        pass
+    def extract_prefixspan(self,sequences):
+        # sequences is a dict, key is user_id, value is a list of sequences
+        # use a dict to store the frequent patterns
+        max_frequent_pattern_dict = {}
+        # for every user, get prefixspan
+        for user_id,seq in sequences.items():
+            ps = PrefixSpan(seq)
+            # Set the minimum support threshold
+            min_support = 2
+
+            # Mine frequent sequential patterns
+            frequent_patterns = ps.frequent(min_support)
+            
+            maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
+            print('user {} has {} frequent patterns, and {} maximal frequent patterns'.format(user_id,len(frequent_patterns),len(maximal_frequent_patterns)))
+            # print(maximal_frequent_patterns)
+            max_frequent_pattern_dict[user_id] = maximal_frequent_patterns
+
+        return max_frequent_pattern_dict
+
 
     # extract max frequent sequences
-    def extract_max_frequent_sequence(self,stayregions):
-        pass
+    def find_max_frequent_patterns(self,frequent_patterns):
+        max_frequent_patterns = []
+        
+        # Sort the patterns based on their support in descending order
+        sorted_patterns = sorted(frequent_patterns, key=lambda x: (-x[0], x[1]))
 
+        for pattern in sorted_patterns:
+            is_max = True
+            support, itemset = pattern
+            
+            for max_pattern in max_frequent_patterns:
+                _, max_itemset = max_pattern
+                
+                # Check if the current pattern is a subset of any max_pattern
+                if set(itemset).issubset(set(max_itemset)):
+                    is_max = False
+                    break
+            
+            if is_max:
+                max_frequent_patterns.append(pattern)
+
+        # Perform an additional check to ensure max_frequent_patterns are indeed maximal
+        final_max_frequent_patterns = []
+        for pattern in max_frequent_patterns:
+            support, items = pattern
+            is_maximal = True
+
+            for other_pattern in max_frequent_patterns:
+                other_support, other_items = other_pattern
+                if items != other_items and set(items).issubset(set(other_items)):
+                    is_maximal = False
+                    break
+
+            if is_maximal:
+                final_max_frequent_patterns.append(pattern)
+
+        return final_max_frequent_patterns
+    
+    # extract max frequent sequences and max support patterns
+    # 这里有必要说一下，这是chatgpt提供的一种方法，用来快速获得最大频繁模式
+    # 然而我认为，也许保留部分最频繁pattern也是有必要的。这些可能包含了home 以及 workplace
+    def find_max_frequent_patterns(self,frequent_patterns):
+        max_frequent_patterns = []
+        
+        # Sort the patterns based on their support in descending order
+        sorted_patterns = sorted(frequent_patterns, key=lambda x: (-x[0], x[1]))
+
+        for pattern in sorted_patterns:
+            is_max = True
+            support, itemset = pattern
+            
+            for max_pattern in max_frequent_patterns:
+                _, max_itemset = max_pattern
+                
+                # Check if the current pattern is a subset of any max_pattern
+                if set(itemset).issubset(set(max_itemset)):
+                    is_max = False
+                    break
+            
+            if is_max:
+                max_frequent_patterns.append(pattern)
+
+        return max_frequent_patterns
+   
 
 if __name__ == '__main__':
     # first get stay regions
@@ -199,40 +282,20 @@ if __name__ == '__main__':
     # get stay region sequence
     semc_similarity.get_stayregion_sequence(stayregions)
     # # print result
-    print(semc_similarity.by_week)
-    print(semc_similarity.by_weekday)
-    print(semc_similarity.by_week_with_subset)
-    print(semc_similarity.by_weekday_with_subset)
+    # print(semc_similarity.by_week)
+    # print(semc_similarity.by_weekday)
+    # print(semc_similarity.by_week_with_subset)
+    # print(semc_similarity.by_weekday_with_subset)
 
     # extract prefixspan
-    semc_similarity.extract_prefixspan(stayregions,'cluster_id')
+    max_frequent_pattern_dict= semc_similarity.extract_prefixspan(semc_similarity.by_week)
 
+    with open("./data/max_frequent_patterns_dict.pkl", "wb") as f:
+        pickle.dump(max_frequent_pattern_dict, f)
 
+    # print result
+    with open("max_frequent_patterns_dict.pkl", "rb") as f:
+        loaded_max_frequent_patterns_dict = pickle.load(f)
 
-# ''    # Input dataset: a list of sequences, where each sequence is a list of itemsets
-#     # Each itemset is a list of items
-#     dataset = [
-#         [(1, 2), (3)],
-#         [(1), (3, 2), (1, 2)],
-#         [(1, 2), (5)],
-#         [(6)]
-#     ]
-    
-#     # create a dataset only containing item not itemset
-#     dataset = [[1,2,3],[1,3,2,1,2],[1,2,5],[6]]
+    print(loaded_max_frequent_patterns_dict)
 
-#     # Instantiate the PrefixSpan class with the dataset
-#     ps = PrefixSpan(dataset)
-
-#     # Set the minimum support threshold
-#     min_support = 2
-
-#     # Mine frequent sequential patterns
-#     frequent_patterns = ps.frequent(min_support)
-
-#     # Print the frequent patterns along with their support count
-#     for support, pattern in frequent_patterns:
-#         print(f"Pattern: {pattern}, Support: {support}")
-        
-
-#     # Output:Pattern: 3, Support: [(1, 2)]''
