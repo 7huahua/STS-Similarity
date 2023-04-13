@@ -1,301 +1,173 @@
 # import libraries
 import pandas as pd
 import numpy as np
-from prefixspan import PrefixSpan
-# import kmeans from sklearn
-from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import random
-import seaborn as sns
 import pickle
-from mpl_toolkits.mplot3d import Axes3D
-
-
-
-
+from get_user_profile import UserProfile
 
 class SemcSimilarity(object):
     # init
-    def __init__(self,stayregions=None):
-        self.stayregions = stayregions
-        self.stayregions = self.set_day_week_weekday(self.stayregions)
+    def __init__(self,stayregions=None,profile_path=None):
+        # 如果传入了profile_path，就直接读取
+        if profile_path:
+            with open(profile_path,'rb') as f:
+                user_profile = pickle.load(f)
+                self.user_profile = user_profile
 
-    def set_day_week_weekday(self,stayregions,time = 'arr_t'):
-        # week is the week from the 2007-04-09(the monday of this week), as the earliest time is 2007-04-12
-        stayregions['week'] = (stayregions[time] - pd.to_datetime('2007-04-09')).dt.days // 7
-        stayregions['weekday'] = stayregions[time].dt.weekday
-        stayregions['day'] = stayregions[time].dt.day
-        return stayregions
-
-    # get poi tfidf
-
-    def get_poi_tfidf(self,stayregions,poi_label):
-        # for each stay region, treat it as a phase, and the pois within it as words
-        # get the tfidf of each phase
-        # 对于每一行的poi str，在使用分号分割后，用空格连接起来，形成一个字符串
-        # 首先，对于每一行的poi str，使用分号分割，得到一个list
-        # 然后，对于每一个list中的元素，使用空格连接起来，得到一个字符串
-        # 最后，将所有的字符串连接起来，得到一个大的字符串
-
-        # 注意，这里poi内部的元素中包含''以及'未知'，需要去除
-        corpus = [' '.join(poi.split(';')) for poi in stayregions[poi_label]]
-        # print(corpus)
-        # 使用tfidf对每一个stay region进行向量化
-        custom_stop_words = ['life','未知']
-        vectorizer = TfidfVectorizer(stop_words = custom_stop_words,token_pattern='(?u)\\b\\w+\\b')
-        sparse_matrix = vectorizer.fit_transform(corpus)
-        # 输出词袋模型中的所有词
-        word = vectorizer.get_feature_names_out()
-        print(word)
-        # sparse_matrix is a csr_matrix
-        # print(type(sparse_matrix))
-        
-        print(sparse_matrix.shape)
-
-        return sparse_matrix
-
-    # cluster stay regions by poi tfidf
-    def cluster_stayregions(self,stayregions,poi_label,cluster_label):
-        # get poi tfidf
-        poi_tfidf = self.get_poi_tfidf(stayregions,poi_label)
-        # poi_tfidf is a csr_matrix
-        # print(poi_tfidf)
-        # cluster stay regions by poi tfidf value using kmeans
-        kmeans = KMeans(n_clusters=35, random_state=0).fit(poi_tfidf)
-        stayregions[cluster_label] = kmeans.labels_
-
-        # print cluster labels
-        # print(stayregions[cluster_label].unique())
-
-        # print cluster label and its count
-        # print(stayregions[cluster_label].value_counts()) 比较均匀
-
-        # visualize cluster result, using the matrix of tfidf
-        self.visualize_cluster_result(poi_tfidf.toarray(),stayregions[cluster_label].tolist())
-        
-        
-        return stayregions
+        # 如果没有传入profile_path，就重新计算用户profile
+        user_profile = UserProfile(stayregions)
+        self.stayregions = user_profile.stayregions
+        self.user_profile = user_profile.week_mfp_dict
+        # self.user_weekday_profiles = user_profile.weekday_mfp_dict
     
-    def visualize_cluster_result(self,vectors,labels):
-        # # 假设 vectors 是一个向量列表, labels 是一个标签列表
-        # # 定义一个TSNE模型
-        # tsne_model = TSNE(n_components=2, perplexity=40, learning_rate=100, n_iter=500)
+    # finally, compute semc similarity
+    def compute_semc_similarity(self,profiles):
+        # for every 2 user, compute semc similarity based on their patterns
+        # profiles is a dict, key is user_id, value is a list of patterns
+        # use a dict to store the similarity
+        similarity_dict = {}
+        for user1,profile1 in profiles.items():
+            for user2,profile2 in profiles.items():
+                if user1 != user2:
+                    # compute similarity
+                    similarity = self.compute_prof_similarity(profile1,profile2)
+                    # store similarity
+                    similarity_dict[(user1,user2)] = similarity
+                    print('user {} to user {}, similarity is {}'.format(user1,user2, similarity))
+                else:
+                    similarity_dict[(user1,user2)] = 1.0
 
-        # # 将高维向量映射到二维空间
-        # tsne_vectors = tsne_model.fit_transform(vectors)
-
-        # # 使用matplotlib进行可视化
-        # unique_labels = list(set(labels))
-        # # colors = ['#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) for i in range(26)]
-        # # 使用 seaborn 生成颜色
-        # colors = sns.color_palette("husl", len(unique_labels))
-        # for i, label in enumerate(unique_labels):
-        #     x = tsne_vectors[np.where(np.array(labels) == label), 0]
-        #     y = tsne_vectors[np.where(np.array(labels) == label), 1]
-        #     plt.scatter(x, y, label=str(label),color=colors[i],s=1)
+        return similarity_dict
+    
+    def compute_prof_similarity(self,profile1,profile2):
+        # compute similarity of user 1 to user 2
+        # profile is a list of patterns
+        # compute similarity
+        similarity = 0.0
         
-        # plt.legend()
-        # plt.show()
-
-        # 将向量降维到三维空间
-        tsne_model = TSNE(n_components=3, perplexity=40, learning_rate=100, n_iter=500)
-        tsne_vectors = tsne_model.fit_transform(vectors)
-
-        # 使用matplotlib进行可视化
-        fig = plt.figure()
-        ax = fig.add_subplot(111, projection='3d')
-
-        unique_labels = list(set(labels))
-        colors = ['#'+''.join([random.choice('0123456789ABCDEF') for j in range(6)]) for i in range(len(unique_labels))]
-
-        for i, label in enumerate(unique_labels):
-            x = tsne_vectors[np.where(np.array(labels) == label), 0]
-            y = tsne_vectors[np.where(np.array(labels) == label), 1]
-            z = tsne_vectors[np.where(np.array(labels) == label), 2]
-            ax.scatter(x, y, z, label=str(label), color=colors[i], s=1)
-
-        ax.legend()
-        plt.show()
-
-
-    # get stay region sequence by week
-    def by_week(self,stayregions,label):
-        by_week = {}
-        for user_id,group in stayregions.groupby('user'):
-            week_squences = []
-            for week,week_group in group.groupby('week'):
-                week_squences.append(week_group[label].tolist())
-            by_week[user_id] = week_squences
-        return by_week
-    
-    # get stay region sequence by weekday
-    def by_weekday(self,stayregions,label):
-        by_weekday = {}
-        for user_id,group in stayregions.groupby('user'):
-            weekday_squences = []
-            for weekday,weekday_group in group.groupby('weekday'):
-                weekday_squences.append(weekday_group[label].tolist())
-            by_weekday[user_id] = weekday_squences
-        return by_weekday
-    
-    # get stay region sequence by week with daily subset
-    def by_week_with_subset(self,stayregions,label):
-        by_week_with_subset = {}
-        for user_id,group in stayregions.groupby('user'):
-            week_squences = []
-            for week,week_group in group.groupby('week'):
-                day_sequences = []
-                for day,day_group in week_group.groupby('day'):
-                    day_sequences.append(day_group[label].tolist())
-
-                week_squences.append(day_sequences)
-            by_week_with_subset[user_id] = week_squences
-        return by_week_with_subset
-    
-    # get stay region sequence by weekday with daily subset
-    def by_weekday_with_subset(self,stayregions,label):
-        by_weekday_with_subset = {}
-        for user_id,group in stayregions.groupby('user'):
-            weekday_squences = []
-            for weekday,weekday_group in group.groupby('weekday'):
-                day_sequences = []
-                for day,day_group in weekday_group.groupby('day'):
-                    day_sequences.append(day_group[label].tolist())
-
-                weekday_squences.append(day_sequences)
-            by_weekday_with_subset[user_id] = weekday_squences
-        return by_weekday_with_subset
-
-    def get_stayregion_sequence(self,stayregions,label = 'cluster_id'):
-        # for ever user, for every week, get stay region sequence with label
-        # stay regions within one day is a turple
-
-        # get different segmentation sequences
-        self.by_week = self.by_week(stayregions,label)
-        self.by_weekday = self.by_weekday(stayregions,label)
-        self.by_week_with_subset = self.by_week_with_subset(stayregions,label)
-        self.by_weekday_with_subset = self.by_weekday_with_subset(stayregions,label)
-
-    # extract prefixspan
-    def extract_prefixspan(self,sequences):
-        # sequences is a dict, key is user_id, value is a list of sequences
-        # use a dict to store the frequent patterns
-        max_frequent_pattern_dict = {}
-        # for every user, get prefixspan
-        for user_id,seq in sequences.items():
-            ps = PrefixSpan(seq)
-            # Set the minimum support threshold
-            min_support = 2
-
-            # Mine frequent sequential patterns
-            frequent_patterns = ps.frequent(min_support)
+        denom = 0.0
+        numer = 0.0
+        for sup1, pattern1 in profile1:
+            # 分母为profile1的总（支持度*长度）之和
+            # print(sup1,pattern1)
+            denom += sup1 * len(pattern1)
+            lcs = []
             
-            maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
-            print('user {} has {} frequent patterns, and {} maximal frequent patterns'.format(user_id,len(frequent_patterns),len(maximal_frequent_patterns)))
-            # print(maximal_frequent_patterns)
-            max_frequent_pattern_dict[user_id] = maximal_frequent_patterns
-
-        return max_frequent_pattern_dict
-
-
-    # extract max frequent sequences
-    def find_max_frequent_patterns(self,frequent_patterns):
-        max_frequent_patterns = []
-        
-        # Sort the patterns based on their support in descending order
-        sorted_patterns = sorted(frequent_patterns, key=lambda x: (-x[0], x[1]))
-
-        for pattern in sorted_patterns:
-            is_max = True
-            support, itemset = pattern
-            
-            for max_pattern in max_frequent_patterns:
-                _, max_itemset = max_pattern
+            for sup2, pattern2 in profile2:
+                # print(sup2,pattern2)
+                # 分子为profile1和profile2中longest common subsequence的（支持度*长度）之和
+                new_lcs = self.longest_common_subsequence(pattern1,pattern2)
+                if len(new_lcs) == min(len(pattern1),len(pattern2)):
+                    # 如果lcs的长度等于较短的pattern的长度，那么就不用继续比较了
+                    lcs = new_lcs
+                    break
+                if len(new_lcs) > len(lcs):
+                    lcs = new_lcs
                 
-                # Check if the current pattern is a subset of any max_pattern
-                if set(itemset).issubset(set(max_itemset)):
-                    is_max = False
-                    break
-            
-            if is_max:
-                max_frequent_patterns.append(pattern)
+            numer += sup1 * len(lcs)
+            # print(lcs)
+            # print('denom is {}, numer is {}'.format(denom,numer))
 
-        # Perform an additional check to ensure max_frequent_patterns are indeed maximal
-        final_max_frequent_patterns = []
-        for pattern in max_frequent_patterns:
-            support, items = pattern
-            is_maximal = True
+        similarity = numer / denom
 
-            for other_pattern in max_frequent_patterns:
-                other_support, other_items = other_pattern
-                if items != other_items and set(items).issubset(set(other_items)):
-                    is_maximal = False
-                    break
-
-            if is_maximal:
-                final_max_frequent_patterns.append(pattern)
-
-        return final_max_frequent_patterns
+        return similarity
     
-    # extract max frequent sequences and max support patterns
-    # 这里有必要说一下，这是chatgpt提供的一种方法，用来快速获得最大频繁模式
-    # 然而我认为，也许保留部分最频繁pattern也是有必要的。这些可能包含了home 以及 workplace
-    def find_max_frequent_patterns(self,frequent_patterns):
-        max_frequent_patterns = []
+    def longest_common_subsequence(self,pattern1,pattern2):
+        # compute longest common subsequence
+        # pattern is a list of items
+        # use dynamic programming
+        # initialize dp
+        dp = [[0 for _ in range(len(pattern2)+1)] for _ in range(len(pattern1)+1)]
+        # compute dp
+        for i in range(1,len(pattern1)+1):
+            for j in range(1,len(pattern2)+1):
+                if pattern1[i-1] == pattern2[j-1]:
+                    dp[i][j] = dp[i-1][j-1] + 1
+                else:
+                    dp[i][j] = max(dp[i-1][j],dp[i][j-1])
         
-        # Sort the patterns based on their support in descending order
-        sorted_patterns = sorted(frequent_patterns, key=lambda x: (-x[0], x[1]))
-
-        for pattern in sorted_patterns:
-            is_max = True
-            support, itemset = pattern
-            
-            for max_pattern in max_frequent_patterns:
-                _, max_itemset = max_pattern
-                
-                # Check if the current pattern is a subset of any max_pattern
-                if set(itemset).issubset(set(max_itemset)):
-                    is_max = False
-                    break
-            
-            if is_max:
-                max_frequent_patterns.append(pattern)
-
-        return max_frequent_patterns
-   
+        # get longest common subsequence
+        lcs = []
+        i = len(pattern1)
+        j = len(pattern2)
+        while i > 0 and j > 0:
+            if pattern1[i-1] == pattern2[j-1]:
+                lcs.append(pattern1[i-1])
+                i -= 1
+                j -= 1
+            else:
+                if dp[i-1][j] > dp[i][j-1]:
+                    i -= 1
+                else:
+                    j -= 1
+        
+        return lcs[::-1]
 
 if __name__ == '__main__':
-    # first get stay regions
-    stayregions = pd.read_csv('data/combined_poi.csv',parse_dates=['arr_t','lea_t'])
-    # only remain rows with value of category1 or category2
-    stayregions = stayregions[stayregions['category1'].notnull() | stayregions['category2'].notnull()]
-    print(stayregions.shape)
+    # # if need re-extract user profile
+    # stayregions = pd.read_csv('data/combined_poi.csv',parse_dates=['arr_t','lea_t'])
+    # # only remain rows with value of category1 or category2
+    # stayregions = stayregions[stayregions['category1'].notnull()]
+    # print(stayregions.shape)
 
-    # get stay region sequence
-    semc_similarity = SemcSimilarity(stayregions)
-    # print result
-    print(semc_similarity.stayregions)
-    # cluster stay regions by poi tfidf
-    stayregions = semc_similarity.cluster_stayregions(stayregions,'category1','cluster_id')
-    # get stay region sequence
-    semc_similarity.get_stayregion_sequence(stayregions)
+    # # get stay region sequence
+    # semc_similarity = SemcSimilarity(stayregions)
     # # print result
-    # print(semc_similarity.by_week)
-    # print(semc_similarity.by_weekday)
-    # print(semc_similarity.by_week_with_subset)
-    # print(semc_similarity.by_weekday_with_subset)
-
-    # extract prefixspan
-    max_frequent_pattern_dict= semc_similarity.extract_prefixspan(semc_similarity.by_week)
-
-    with open("./data/max_frequent_patterns_dict.pkl", "wb") as f:
-        pickle.dump(max_frequent_pattern_dict, f)
-
+    # print(semc_similarity.stayregions.head())
+    
+    # or load user profile from file
+    semc_similarity = SemcSimilarity(profile_path='data/user_profile/week_mfp_dict.pkl')
     # print result
-    with open("max_frequent_patterns_dict.pkl", "rb") as f:
-        loaded_max_frequent_patterns_dict = pickle.load(f)
+    loaded_max_frequent_patterns_dict = semc_similarity.user_profile
 
-    print(loaded_max_frequent_patterns_dict)
+    user_list = []
+    pattern_num_list = []
+    for user_id, patterns in loaded_max_frequent_patterns_dict.items():
+        print('user {} has {} max frequent patterns'.format(user_id,len(patterns)))
+        # print(patterns)
+        # print()
+        user_list.append(user_id)
+        pattern_num_list.append(len(patterns))
+
+    # check if user_id + or - 200 is in the list
+    for user_id in user_list:
+        if user_id < 200 and user_id + 200 in user_list:
+            continue
+        elif user_id >= 200 and user_id - 200 in user_list:
+            continue
+        else:
+            print('user {} does not have round truth'.format(user_id))
+
+    # check users with no frequent patterns
+    for user_id in user_list:
+        if len(loaded_max_frequent_patterns_dict[user_id]) == 0:
+            print('user {} has no frequent patterns'.format(user_id))
+
+    # check mean number of frequent patterns
+    print('mean number of frequent patterns is {}'.format(np.mean(pattern_num_list)))
+
+    # check max number of frequent patterns
+    print('max number of frequent patterns is {}'.format(np.max(pattern_num_list)))
+
+    # check median number of frequent patterns
+    print('median of frequent patterns is {}'.format(np.median(pattern_num_list)))
+
+    # if drop users with no frequent patterns, print the mean number of frequent patterns
+    pattern_num_list = [x for x in pattern_num_list if x != 0]
+    print('mean number of frequent patterns is {}'.format(np.mean(pattern_num_list)))
+    print('median of frequent patterns is {}'.format(np.median(pattern_num_list)))
+
+    # print the user and their frequent patterns whose number of frequent patterns is 1
+    for user_id, patterns in loaded_max_frequent_patterns_dict.items():
+        if len(patterns) == 1:
+            print('user {} has {} frequent patterns'.format(user_id,len(patterns)))
+            print(patterns)
+            # print()
+
+    # semc_similarity = SemcSimilarity()
+    # compute similarity
+    similarity_dict = semc_similarity.compute_semc_similarity(loaded_max_frequent_patterns_dict)
+    print(similarity_dict)
+
+
+    
 

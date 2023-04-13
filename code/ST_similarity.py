@@ -2,9 +2,9 @@ import pandas as pd
 import numpy as np
 import os
 from sklearn.metrics.pairwise import cosine_distances, euclidean_distances
-from point_features import PointFeatures
-from ellipse_features import EllipseFeatures
-from location_features import LocationFeatures
+from compute_point_features import PointFeatures
+from compute_ellipse_features import EllipseFeatures
+from compute_location_features import LocationFeatures
 from scipy.sparse import hstack
 from sklearn.preprocessing import normalize
 
