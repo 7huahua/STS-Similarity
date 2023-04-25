@@ -32,12 +32,28 @@ class UserProfile(object):
         for user_id,seq in sequences.items():
             ps = PrefixSpan(seq)
             # Set the minimum support threshold
-            min_support = 2
+            min_support = 1
 
             # Mine frequent sequential patterns
             frequent_patterns = ps.frequent(min_support)
             
+            # # 如果没有找到maximal frequent pattern，就把min_support减小一点
+            # if len(frequent_patterns) == 0:
+            #     min_support = 1
+            #     frequent_patterns = ps.frequent(min_support)
+            #     maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
+
+            # # 如果maximal frequent pattern大于1000，就把min_support增大一点
+            # el
+            # if len(frequent_patterns) > 10000:
+            #     min_support = 3
+            #     frequent_patterns = ps.frequent(min_support)
+            #     maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
+
+            # else:
+            #     
             maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
+            
             print('user {} has {} frequent patterns, and {} maximal frequent patterns'.format(user_id,len(frequent_patterns),len(maximal_frequent_patterns)))
             # print(maximal_frequent_patterns)
             max_frequent_pattern_dict[user_id] = maximal_frequent_patterns
@@ -113,9 +129,13 @@ class UserProfile(object):
 # test
 if __name__ == '__main__':
     # first get stay regions
-    stayregions = pd.read_csv('data/combined_poi.csv',parse_dates=['arr_t','lea_t'])
+    stayregions = pd.read_csv('data/user_profile/resampled_data_dropped_bymean_bylocal.csv',parse_dates=['arr_t','lea_t'])
     # only remain rows with value of category1 or category2
     stayregions = stayregions[stayregions['category1'].notnull() | stayregions['category2'].notnull()]
+    # drop user 29 and user 229
+    stayregions = stayregions[stayregions['user']!=29]
+    stayregions = stayregions[stayregions['user']!=229]
+
     print(stayregions.shape)
 
     # get stay region sequence
@@ -127,9 +147,12 @@ if __name__ == '__main__':
     week_max_frequent_pattern_dict = user_profile.week_mfp_dict
     weekday_max_frequent_pattern_dict = user_profile.weekday_mfp_dict
 
+    # # save stay regions to pandas
+    # with open("./data/user_profile/local_resampled_stayregions_bymean.pkl", "wb") as f:
+    #     pickle.dump(user_profile.stayregions, f)
     
-    with open("./data/user_profile/week_max_frequent_patterns_dict.pkl", "wb") as f:
+    with open("./data/user_profile/dropped_mean_local_week_sup1.pkl", "wb") as f:
         pickle.dump(week_max_frequent_pattern_dict, f)
     
-    with open("./data/user_profile/weekday_max_frequent_patterns_dict.pkl", "wb") as f:
+    with open("./data/user_profile/dropped_mean_local_weekday_sup1.pkl", "wb") as f:
         pickle.dump(weekday_max_frequent_pattern_dict, f)

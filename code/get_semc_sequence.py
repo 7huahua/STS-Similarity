@@ -10,8 +10,7 @@ import seaborn as sns
 class SemcSequence(object):
     # init
     def __init__(self,stayregions=None):
-        self.stayregions = stayregions
-        self.stayregions = self.set_day_week_weekday(self.stayregions)
+        self.stayregions = self.set_day_week_weekday(stayregions)
         self.stayregions = self.cluster_stayregions(self.stayregions,'category1','cluster_id')
         # get stay region sequence
         self.semc_sequences = self.get_stayregion_sequence(self.stayregions)
@@ -123,6 +122,8 @@ class SemcSequence(object):
     # get stay region sequence by week
     def by_week(self,stayregions,label):
         by_week = {}
+        # sort stayregions by user and arrival time
+        stayregions = stayregions.sort_values(by=['user','arr_t'])
         for user_id,group in stayregions.groupby('user'):
             week_squences = []
             for week,week_group in group.groupby('week'):
@@ -133,6 +134,7 @@ class SemcSequence(object):
     # get stay region sequence by weekday
     def by_weekday(self,stayregions,label):
         by_weekday = {}
+        stayregions = stayregions.sort_values(by=['user','arr_t'])
         for user_id,group in stayregions.groupby('user'):
             weekday_squences = []
             for weekday,weekday_group in group.groupby('weekday'):
@@ -143,6 +145,7 @@ class SemcSequence(object):
     # get stay region sequence by week with daily subset
     def by_week_with_subset(self,stayregions,label):
         by_week_with_subset = {}
+        stayregions = stayregions.sort_values(by=['user','arr_t'])
         for user_id,group in stayregions.groupby('user'):
             week_squences = []
             for week,week_group in group.groupby('week'):
@@ -157,6 +160,7 @@ class SemcSequence(object):
     # get stay region sequence by weekday with daily subset
     def by_weekday_with_subset(self,stayregions,label):
         by_weekday_with_subset = {}
+        stayregions = stayregions.sort_values(by=['user','arr_t'])
         for user_id,group in stayregions.groupby('user'):
             weekday_squences = []
             for weekday,weekday_group in group.groupby('weekday'):

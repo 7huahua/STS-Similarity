@@ -11,7 +11,7 @@ class LocationFeatures(object):
         self.staypoints = self.get_locations(staypoints)
 
         # location features are stored in CSR format
-        self.location_features = self.get_location_features(self.staypoints)
+        self.users, self.location_features = self.get_location_features(self.staypoints)
 
     def get_locations(self,staypoints):
         coords = staypoints[['lat','lng']].values
@@ -30,7 +30,9 @@ class LocationFeatures(object):
         locations = staypoints[staypoints[self.label] != -1].groupby('user').apply(lambda x:' '.join(str(i) for i in x[self.label].values)).values
         vectorizer = TfidfVectorizer(stop_words = None,token_pattern='(?u)\\b\\w+\\b')
         sparse_matrix = vectorizer.fit_transform(locations)
-        
+
+        user_list = staypoints[staypoints[self.label] != -1].user.unique()
+
         # sparse_matrix is stored in CSR format
         if isinstance(sparse_matrix, csr_matrix):
             print('sparse_matrix is stored in CSR format')
@@ -47,6 +49,10 @@ class LocationFeatures(object):
             print('X_norm is not normalized')
             sparse_matrix = normalize(sparse_matrix, norm='l2')
 
-        return sparse_matrix
+        print(sparse_matrix.shape)
+
+        # return matrix and user list
+
+        return sparse_matrix, user_list
     
 

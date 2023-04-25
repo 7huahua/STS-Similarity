@@ -15,7 +15,7 @@ class STSimilarity(object):
 
         self.point_features = self.get_point_features(self.stayregions) if 'point' in self.feature_types else None
         self.ellipse_features = self.get_ellipse_features(self.stayregions) if 'ellipse' in self.feature_types else None
-        self.location_features = self.get_location_features(self.stayregions) if 'location' in self.feature_types else None
+        self.get_location_features(self.stayregions) if 'location' in self.feature_types else None
         # self.st_similatiry = self.get_st_similarity(self.location_features)
 
     def load_stay_regions(self, src):
@@ -36,8 +36,7 @@ class STSimilarity(object):
     
     def get_location_features(self, stay_regions):
         lf_obj = LocationFeatures(stay_regions)
-        location_features = lf_obj.get_location_features(stay_regions)
-        return location_features
+        self.location_features, self.users = lf_obj.get_location_features(stay_regions)
     
     def get_st_similarity(self, metric = 'cosine'):
         if self.point_features is None and self.ellipse_features is None and self.location_features is None:
@@ -65,11 +64,41 @@ class STSimilarity(object):
         else:
             raise ValueError('Invalid similarity metric: {}'.format(metric))
         
-        return sim_matrix
+        st_similarity = {}
+        user_list = self.users
+        for i in range(len(user_list)):
+            user = user_list[i]
+            st_similarity[user] = {}
+            for j in range(len(user_list)):
+                if i == j:
+                    st_similarity[user][user_list[j]] = 0
+                else:
+                    st_similarity[user][user_list[j]] = sim_matrix[i,j]
+        # return sim_matrix
+        self.st_sim_dict = st_similarity
+        return st_similarity
+    
+    def matrix_to_dict(self, matrix):
+        # Convert similarity matrix to a nested dictionary
+        # key is user, value is a dictionary of user and similarity
+        st_similarity = {}
+        user_list = list(self.stayregions['user'].unique())
+        for i in range(len(user_list)):
+            user = user_list[i]
+            st_similarity[user] = {}
+            for j in range(len(user_list)):
+                if i == j:
+                    st_similarity[user][user_list[j]] = 0
+                else:
+                    st_similarity[user][user_list[j]] = matrix[i,j]
+        
+        self.st_sim_dict = st_similarity
     
 
 if __name__ == '__main__':
     st_obj = STSimilarity('data/stay_regions.csv','location')
-    st_similarity = st_obj.get_st_similarity('cosine')
-    print(st_similarity)
-    print(np.mat(st_similarity).shape)
+    print('origin number of users: ',len(st_obj.stayregions['user'].unique()))
+    st_obj.get_st_similarity('cosine')
+    # print(st_similarity)
+    # print(np.mat(st_similarity).shape)
+    print(st_obj.st_sim_dict)

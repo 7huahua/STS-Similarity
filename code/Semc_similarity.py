@@ -14,33 +14,43 @@ class SemcSimilarity(object):
                 self.user_profile = user_profile
 
         # 如果没有传入profile_path，就重新计算用户profile
-        user_profile = UserProfile(stayregions)
-        self.stayregions = user_profile.stayregions
-        self.user_profile = user_profile.week_mfp_dict
+        else:
+            user_profile = UserProfile(stayregions)
+            self.stayregions = user_profile.stayregions
+            self.user_profile = user_profile.week_mfp_dict
         # self.user_weekday_profiles = user_profile.weekday_mfp_dict
     
     # finally, compute semc similarity
     def compute_semc_similarity(self,profiles):
         # for every 2 user, compute semc similarity based on their patterns
         # profiles is a dict, key is user_id, value is a list of patterns
-        # use a dict to store the similarity
+        # use a nested dict to store the similarity
         similarity_dict = {}
         for user1,profile1 in profiles.items():
+            if user1 not in similarity_dict:
+                similarity_dict[user1] = {}
             for user2,profile2 in profiles.items():
                 if user1 != user2:
                     # compute similarity
                     similarity = self.compute_prof_similarity(profile1,profile2)
                     # store similarity
-                    similarity_dict[(user1,user2)] = similarity
+                    # similarity_dict[(user1,user2)] = similarity
+                    similarity_dict[user1][user2] = similarity
                     print('user {} to user {}, similarity is {}'.format(user1,user2, similarity))
                 else:
-                    similarity_dict[(user1,user2)] = 1.0
+                    # similarity_dict[(user1,user2)] = 1.0
+                    similarity_dict[user1][user2] = 0.0
 
         return similarity_dict
     
     def compute_prof_similarity(self,profile1,profile2):
         # compute similarity of user 1 to user 2
         # profile is a list of patterns
+
+        # 如果profile1为空，那么similarity为0
+        if len(profile1) == 0:
+            return 0.0
+
         # compute similarity
         similarity = 0.0
         
@@ -103,27 +113,31 @@ class SemcSimilarity(object):
         return lcs[::-1]
 
 if __name__ == '__main__':
-    # # if need re-extract user profile
-    # stayregions = pd.read_csv('data/combined_poi.csv',parse_dates=['arr_t','lea_t'])
-    # # only remain rows with value of category1 or category2
-    # stayregions = stayregions[stayregions['category1'].notnull()]
-    # print(stayregions.shape)
+    # if need re-extract user profile
+    stayregions = pd.read_csv('data/combined_poi.csv',parse_dates=['arr_t','lea_t'])
+    # only remain rows with value of category1 or category2
+    stayregions = stayregions[stayregions['category1'].notnull()]
+    # drop user 29 and user 229
+    stayregions = stayregions[stayregions['user_id'] != 29]
+    stayregions = stayregions[stayregions['user_id'] != 229]
 
-    # # get stay region sequence
-    # semc_similarity = SemcSimilarity(stayregions)
-    # # print result
-    # print(semc_similarity.stayregions.head())
-    
-    # or load user profile from file
-    semc_similarity = SemcSimilarity(profile_path='data/user_profile/week_mfp_dict.pkl')
+    print(stayregions.shape)
+
+    # get stay region sequence
+    semc_similarity = SemcSimilarity(stayregions=stayregions)
     # print result
-    loaded_max_frequent_patterns_dict = semc_similarity.user_profile
+    print(semc_similarity.stayregions.head())
+    
+    # # or load user profile from file
+    # semc_similarity = SemcSimilarity(profile_path='data/user_profile/local_resampled_week_max_frequent_patterns_dict.pkl')
+    # # print result
+    # loaded_max_frequent_patterns_dict = semc_similarity.user_profile
 
     user_list = []
     pattern_num_list = []
     for user_id, patterns in loaded_max_frequent_patterns_dict.items():
         print('user {} has {} max frequent patterns'.format(user_id,len(patterns)))
-        # print(patterns)
+        print(patterns)
         # print()
         user_list.append(user_id)
         pattern_num_list.append(len(patterns))
@@ -165,7 +179,7 @@ if __name__ == '__main__':
 
     # semc_similarity = SemcSimilarity()
     # compute similarity
-    similarity_dict = semc_similarity.compute_semc_similarity(loaded_max_frequent_patterns_dict)
+    similarity_dict = semc_similarity.compute_semc_similarity(semc_similarity.user_profile)
     print(similarity_dict)
 
 
