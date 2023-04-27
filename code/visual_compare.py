@@ -74,19 +74,19 @@ def compare_resample_method(stayregion_path,profile_path,resample_data,resample_
     ndcgs = [ndcgs_onlysemc,ndcgs_onlyst,ndcgs_stsemc]
     labels = ['only semc','only st','st+semc']
 
-    total_sim.plot_multiple_lines(x_axis,maps,labels,colors,markers,linestyles,filename=pre_name+'map_200.png')
-    total_sim.plot_multiple_lines(x_axis,ndcgs,labels,colors,markers,linestyles,filename=pre_name+'ndcg_200.png')
+    total_sim.plot_multiple_lines(x_axis,maps,labels,colors,markers,linestyles,filename=pre_name+'map.png')
+    total_sim.plot_multiple_lines(x_axis,ndcgs,labels,colors,markers,linestyles,filename=pre_name+'ndcg.png')
 
 def compare_week_weekday():
     pass
 
 
 if __name__ == '__main__':
-    stayregion_path = 'data/stay_regions.csv'
-    profile_path = 'data/user_profile/selected2_mean_local_week.pkl'
+    stayregion_path = 'data/user_profile/stayregions_sample.csv'
+    profile_path = 'data/user_profile/profiles_sample.pkl'
     compare_resample_method(stayregion_path=stayregion_path,profile_path=profile_path,
-                            resample_data='selected2',
+                            resample_data='sample',
                             resample_num='mean',
                             resample_weight='local',
-                            segement_method='week_')
+                            segement_method='week')
     
