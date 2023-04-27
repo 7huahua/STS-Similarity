@@ -96,7 +96,7 @@ class STSimilarity(object):
     
 
 if __name__ == '__main__':
-    st_obj = STSimilarity('data/stay_regions.csv','location')
+    st_obj = STSimilarity('data/user_profile/stayregions_sample.csv','location')
     print('origin number of users: ',len(st_obj.stayregions['user'].unique()))
     st_obj.get_st_similarity('cosine')
     # print(st_similarity)
