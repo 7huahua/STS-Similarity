@@ -7,53 +7,46 @@ import numpy as np
 
 def compare_resample_method(stayregion_path,profile_path,resample_data,resample_num,resample_weight,segement_method):
     
-    # 为了区别每一次的结果，文件名需要统一命名，以下为需要考虑的几种情况
-    # folder1:alluser/droppeduser
-    # folder2:bymean/bymedian/by100
-    # folder3:bylocalweight/byglobalweight/bytfidf
+    # the file name is like:
+    # [userdata]:alluser/dropped/sample
+    # [sample number]:bymean/bymedian
+    # [sample weight]:bylocalweight/bytfidf
 
     pre_name = 'data/evaluate/pictures/'+resample_data+'_'+str(resample_num)+'_'+str(resample_weight)+'_'+segement_method
-    # 接下来的所有文件名按照上述顺序命名
 
-    # 获取st_sim
+    # get st_sim
     st_similarity = STSimilarity(stayregion_path,feature_types='location')
     st_sim = st_similarity.get_st_similarity('cosine')
 
-
-    # 获取semc_sim 
+    # get semc_sim 
     semc_similarity = SemcSimilarity(profile_path=profile_path)
     userprofile = semc_similarity.user_profile
-    # 从dictionary中删除key为29和229的user
     semc_sim = semc_similarity.compute_semc_similarity(userprofile)
 
-    # 获取ground truth
+    # get ground truth
     total_sim = TotalSimilarity()
-
-    stayregions = pd.read_csv('data/stay_regions.csv')
-    # drop user 29 and user 229
-    stayregions = stayregions[stayregions.user != 29]
-    stayregions = stayregions[stayregions.user != 229]
+    stayregions = pd.read_csv(stayregion_path)
     total_sim.get_ground_truth(stayregions)
 
-    # 计算stsemc_sim
+    # compute total stsemc_sim
     total_sim.compute_total_similarity(st_sim=st_sim,semc_sim=semc_sim,w1=0.5,w2=0.5)
     y_true_stsemc, y_pred_stsemc = total_sim.dict_to_array(total_sim.ground_truth,total_sim.total_sim_dict)
 
-    # 计算semc_sim
+    # compute only semc_sim
     total_sim.compute_total_similarity(st_sim=None,semc_sim=semc_sim,w1=0.5,w2=0.5)
     y_true_onlysemc, y_pred_onlysemc = total_sim.dict_to_array(total_sim.ground_truth,total_sim.total_sim_dict)
 
-    # 计算st_sim
+    # compute only st_sim
     total_sim.compute_total_similarity(st_sim=st_sim,semc_sim=None,w1=0.5,w2=0.5)
     y_true_onlyst, y_pred_onlyst = total_sim.dict_to_array(total_sim.ground_truth,total_sim.total_sim_dict)
 
-    # 评估
+    # evaluate
     total_sim = TotalSimilarity()
 
     colors = ['red', 'blue', 'green', 'purple', 'orange', 'darkcyan', 'magenta', 'gold']
     markers = ['o', 's', '^', 'v', 'D', 'p', '*', 'H']
     linestyles = ['-', '--', ':', '-.', '-', '--', ':', '-.']
-    x_axis = range(1,200)
+    x_axis = range(1,20)
 
     maps_onlysemc = []
     ndcgs_onlysemc = []
@@ -90,12 +83,10 @@ def compare_week_weekday():
 
 if __name__ == '__main__':
     stayregion_path = 'data/stay_regions.csv'
-    profile_path = 'data/user_profile/dropped_mean_local_week_sup2.pkl'
+    profile_path = 'data/user_profile/selected2_mean_local_week.pkl'
     compare_resample_method(stayregion_path=stayregion_path,profile_path=profile_path,
-                            resample_data='dropped',
+                            resample_data='selected2',
                             resample_num='mean',
                             resample_weight='local',
-                            segement_method='week_sup2')
-    # compare_week_weekday()
-
-    # 
+                            segement_method='week_')
+    
