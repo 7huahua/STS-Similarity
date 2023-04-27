@@ -7,13 +7,13 @@ from get_user_profile import UserProfile
 class SemcSimilarity(object):
     # init
     def __init__(self,stayregions=None,profile_path=None):
-        # 如果传入了profile_path，就直接读取
+        # if profile_path is not None, load user_profile from profile_path
         if profile_path:
             with open(profile_path,'rb') as f:
                 user_profile = pickle.load(f)
                 self.user_profile = user_profile
 
-        # 如果没有传入profile_path，就重新计算用户profile
+        # if profile_path is None, compute user_profile from stayregions
         else:
             user_profile = UserProfile(stayregions)
             self.stayregions = user_profile.stayregions
@@ -47,8 +47,8 @@ class SemcSimilarity(object):
         # compute similarity of user 1 to user 2
         # profile is a list of patterns
 
-        # 如果profile1为空，那么similarity为0
-        if len(profile1) == 0:
+        # if profile1 or profile2 is empty, return 0.0
+        if len(profile1) == 0 or len(profile2) == 0:
             return 0.0
 
         # compute similarity
@@ -57,17 +57,16 @@ class SemcSimilarity(object):
         denom = 0.0
         numer = 0.0
         for sup1, pattern1 in profile1:
-            # 分母为profile1的总（支持度*长度）之和
-            # print(sup1,pattern1)
+            # denominator = sum of (sup1*length)
             denom += sup1 * len(pattern1)
             lcs = []
             
             for sup2, pattern2 in profile2:
                 # print(sup2,pattern2)
-                # 分子为profile1和profile2中longest common subsequence的（支持度*长度）之和
+                # numerinator is sum of profile1 and profile2's longest common subsequence 's（sup*length)
                 new_lcs = self.longest_common_subsequence(pattern1,pattern2)
                 if len(new_lcs) == min(len(pattern1),len(pattern2)):
-                    # 如果lcs的长度等于较短的pattern的长度，那么就不用继续比较了
+                    # if new_lcs is the same length of one of the pattern, break
                     lcs = new_lcs
                     break
                 if len(new_lcs) > len(lcs):
@@ -112,75 +111,6 @@ class SemcSimilarity(object):
         
         return lcs[::-1]
 
-if __name__ == '__main__':
-    # if need re-extract user profile
-    stayregions = pd.read_csv('data/combined_poi.csv',parse_dates=['arr_t','lea_t'])
-    # only remain rows with value of category1 or category2
-    stayregions = stayregions[stayregions['category1'].notnull()]
-    # drop user 29 and user 229
-    stayregions = stayregions[stayregions['user_id'] != 29]
-    stayregions = stayregions[stayregions['user_id'] != 229]
-
-    print(stayregions.shape)
-
-    # get stay region sequence
-    semc_similarity = SemcSimilarity(stayregions=stayregions)
-    # print result
-    print(semc_similarity.stayregions.head())
-    
-    # # or load user profile from file
-    # semc_similarity = SemcSimilarity(profile_path='data/user_profile/local_resampled_week_max_frequent_patterns_dict.pkl')
-    # # print result
-    # loaded_max_frequent_patterns_dict = semc_similarity.user_profile
-
-    user_list = []
-    pattern_num_list = []
-    for user_id, patterns in loaded_max_frequent_patterns_dict.items():
-        print('user {} has {} max frequent patterns'.format(user_id,len(patterns)))
-        print(patterns)
-        # print()
-        user_list.append(user_id)
-        pattern_num_list.append(len(patterns))
-
-    # check if user_id + or - 200 is in the list
-    for user_id in user_list:
-        if user_id < 200 and user_id + 200 in user_list:
-            continue
-        elif user_id >= 200 and user_id - 200 in user_list:
-            continue
-        else:
-            print('user {} does not have round truth'.format(user_id))
-
-    # check users with no frequent patterns
-    for user_id in user_list:
-        if len(loaded_max_frequent_patterns_dict[user_id]) == 0:
-            print('user {} has no frequent patterns'.format(user_id))
-
-    # check mean number of frequent patterns
-    print('mean number of frequent patterns is {}'.format(np.mean(pattern_num_list)))
-
-    # check max number of frequent patterns
-    print('max number of frequent patterns is {}'.format(np.max(pattern_num_list)))
-
-    # check median number of frequent patterns
-    print('median of frequent patterns is {}'.format(np.median(pattern_num_list)))
-
-    # if drop users with no frequent patterns, print the mean number of frequent patterns
-    pattern_num_list = [x for x in pattern_num_list if x != 0]
-    print('mean number of frequent patterns is {}'.format(np.mean(pattern_num_list)))
-    print('median of frequent patterns is {}'.format(np.median(pattern_num_list)))
-
-    # print the user and their frequent patterns whose number of frequent patterns is 1
-    for user_id, patterns in loaded_max_frequent_patterns_dict.items():
-        if len(patterns) == 1:
-            print('user {} has {} frequent patterns'.format(user_id,len(patterns)))
-            print(patterns)
-            # print()
-
-    # semc_similarity = SemcSimilarity()
-    # compute similarity
-    similarity_dict = semc_similarity.compute_semc_similarity(semc_similarity.user_profile)
-    print(similarity_dict)
 
 
     
