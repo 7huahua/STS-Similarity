@@ -1,13 +1,6 @@
 # import libraries
 import pandas as pd
-import numpy as np
 from prefixspan import PrefixSpan
-# import kmeans from sklearn
-from sklearn.cluster import KMeans
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.manifold import TSNE
-import matplotlib.pyplot as plt
-import random
 import pickle
 from get_semc_sequence import SemcSequence
 
@@ -32,26 +25,14 @@ class UserProfile(object):
         for user_id,seq in sequences.items():
             ps = PrefixSpan(seq)
             # Set the minimum support threshold
-            min_support = 1
+            min_support = 2
 
             # Mine frequent sequential patterns
             frequent_patterns = ps.frequent(min_support)
-            
-            # # 如果没有找到maximal frequent pattern，就把min_support减小一点
-            # if len(frequent_patterns) == 0:
-            #     min_support = 1
-            #     frequent_patterns = ps.frequent(min_support)
-            #     maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
 
-            # # 如果maximal frequent pattern大于1000，就把min_support增大一点
-            # el
-            # if len(frequent_patterns) > 10000:
-            #     min_support = 3
-            #     frequent_patterns = ps.frequent(min_support)
-            #     maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
-
-            # else:
-            #     
+            # if the number of frequent patterns is too large
+            # please increase the min_support or resample users
+              
             maximal_frequent_patterns = self.find_max_frequent_patterns(frequent_patterns)
             
             print('user {} has {} frequent patterns, and {} maximal frequent patterns'.format(user_id,len(frequent_patterns),len(maximal_frequent_patterns)))
@@ -101,11 +82,10 @@ class UserProfile(object):
         return final_max_frequent_patterns
     
     # extract max frequent sequences and max support patterns
-    # 这里有必要说一下，这是chatgpt提供的一种方法，用来快速获得最大频繁模式
-    # 然而我认为，也许保留部分最频繁pattern也是有必要的。这些可能包含了home 以及 workplace
+    # this function is not used, as some large support patterns are also included
+    # however, those patterns could include home and workplace
     def find_max_frequent_support_patterns(self,frequent_patterns):
         max_frequent_patterns = []
-        
         # Sort the patterns based on their support in descending order
         sorted_patterns = sorted(frequent_patterns, key=lambda x: (-x[0], x[1]))
 
@@ -129,30 +109,17 @@ class UserProfile(object):
 # test
 if __name__ == '__main__':
     # first get stay regions
-    stayregions = pd.read_csv('data/user_profile/resampled_data_dropped_bymean_bylocal.csv',parse_dates=['arr_t','lea_t'])
+    stayregions = pd.read_csv('data/user_profile/stayregions_sample.csv',parse_dates=['arr_t','lea_t'])
     # only remain rows with value of category1 or category2
     stayregions = stayregions[stayregions['category1'].notnull() | stayregions['category2'].notnull()]
-    # drop user 29 and user 229
-    stayregions = stayregions[stayregions['user']!=29]
-    stayregions = stayregions[stayregions['user']!=229]
-
     print(stayregions.shape)
 
     # get stay region sequence
     user_profile = UserProfile(stayregions)
-    # print result
-    print(user_profile.stayregions.head())
 
     # extract prefixspan
-    week_max_frequent_pattern_dict = user_profile.week_mfp_dict
-    weekday_max_frequent_pattern_dict = user_profile.weekday_mfp_dict
-
-    # # save stay regions to pandas
-    # with open("./data/user_profile/local_resampled_stayregions_bymean.pkl", "wb") as f:
-    #     pickle.dump(user_profile.stayregions, f)
+    pattern_dict = user_profile.week_mfp_dict
     
-    with open("./data/user_profile/dropped_mean_local_week_sup1.pkl", "wb") as f:
-        pickle.dump(week_max_frequent_pattern_dict, f)
-    
-    with open("./data/user_profile/dropped_mean_local_weekday_sup1.pkl", "wb") as f:
-        pickle.dump(weekday_max_frequent_pattern_dict, f)
+    # save the results
+    with open("./data/user_profile/profile_sample.pkl", "wb") as f:
+        pickle.dump(pattern_dict, f)
