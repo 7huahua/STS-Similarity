@@ -1,8 +1,16 @@
 # STS-Similarity
 
 
-这是一个本人论文的项目。
-其中，ST_similarity用于计算ST-simlarity score，Semc_similarity用于计算smec-sim score
-st主要使用locaiton_features,利用stay point的时空聚类算出用户的tfidf向量作为相似度
-Semc先将stayregion数据计算出tfidf后进行聚类，从而获得语义轨迹，再使用prefixspan计算最大频繁模式序列
-通过计算用户两两之间的最大频繁模式序列的相似度作为用户的相似度
+This project is for my paper: [Mining User Similarity from GPS Trajectory Based on Spatial-temporal and Semantic Information] (https://ieeexplore.ieee.org/document/9874192/metrics#metrics)
+
+
+ST_similarity 
+This file includes location features (could include point features ellipse features in the future)
+Location features compute the tfidf vector of the clusters of stay points.
+
+
+Semc_similarity
+Semc firstly generate the semantic sequences from stay region clusters, then use prefixspan compute the maximal frequent sequence patterns, finally compute the similarity of mfsp from every 2 users as their semantic similarity.
+
+More details please refer to the paper.
+If you wanna use this code, please refer this paper in your research properlly.
